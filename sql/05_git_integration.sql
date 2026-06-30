@@ -32,10 +32,13 @@ USE ROLE ENGINEER;
 USE DATABASE DATA_LAKE__NCL;
 USE SCHEMA POD_GROUP_MANAGER;
 
+-- vNext / container-runtime Streamlit: use FROM (not ROOT_LOCATION) and a
+-- MAIN_FILE with no leading slash. ROOT_LOCATION is rejected on this account.
 CREATE OR REPLACE STREAMLIT POD_GROUP_MANAGER
-  ROOT_LOCATION = '@EXTERNAL_ACCESS.GITHUB.POD_GROUP_MANAGER_REPO/branches/main'
-  MAIN_FILE = '/streamlit_app.py'
+  FROM '@EXTERNAL_ACCESS.GITHUB.POD_GROUP_MANAGER_REPO/branches/main'
+  MAIN_FILE = 'streamlit_app.py'
   QUERY_WAREHOUSE = 'NCL_ANALYTICS_XS'
+  TITLE = 'POD Group Manager'
   COMMENT = 'POD Group Manager - assign and maintain POD group overview mappings';
 
 GRANT USAGE ON STREAMLIT POD_GROUP_MANAGER TO ROLE ANALYST;
@@ -43,5 +46,8 @@ GRANT USAGE ON STREAMLIT POD_GROUP_MANAGER TO ROLE ANALYST;
 -- -----------------------------------------------------
 -- 3. Maintenance
 -- -----------------------------------------------------
--- Pull latest app changes after pushing to GitHub:
+-- Pull latest app changes after pushing to GitHub: fetch the repo, then add a
+-- new version to the Streamlit from the branch tip.
 --   ALTER GIT REPOSITORY EXTERNAL_ACCESS.GITHUB.POD_GROUP_MANAGER_REPO FETCH;
+--   ALTER STREAMLIT DATA_LAKE__NCL.POD_GROUP_MANAGER.POD_GROUP_MANAGER
+--     ADD VERSION FROM '@EXTERNAL_ACCESS.GITHUB.POD_GROUP_MANAGER_REPO/branches/main';

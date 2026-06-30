@@ -1,46 +1,29 @@
 -- =====================================================
 -- POD GROUP MANAGER - Snowflake Git Integration & Streamlit App
 -- =====================================================
--- Pulls the app from a PRIVATE GitHub repo into Snowflake and creates the
--- Streamlit object. Run sql/01-04 first.
+-- Pulls the app from GitHub into Snowflake and creates the Streamlit object.
+-- Run sql/01-04 first.
 --
--- NOTE: secrets and external access integrations are normally managed in the
--- Snowflake-Deployment repo. The DDL below is the reference; create the PAT
--- secret there if that is your team's convention.
+-- Reuses the existing org-wide integration API__GITHUB__WNL_ICB_ANALYTICS
+-- (Snowflake GitHub App auth, no per-repo secret) - the same pattern as
+-- SNOMED_CLUSTER_MANAGER_REPO.
 
 -- -----------------------------------------------------
--- 1. Secret + API integration for the private repo
+-- 1. Git repository
 -- -----------------------------------------------------
 USE ROLE EXTERNAL_ACCESS_ADMIN;
 USE DATABASE EXTERNAL_ACCESS;
-CREATE SCHEMA IF NOT EXISTS GITHUB;
 USE SCHEMA GITHUB;
 
--- GitHub PAT with read access to wnl-icb-analytics/pod-group-manager.
--- Replace the placeholder; do not commit a real token.
-CREATE OR REPLACE SECRET pod_group_manager_git_secret
-  TYPE = password
-  USERNAME = '<github-username>'
-  PASSWORD = '<github-personal-access-token>';
-
--- Dedicated integration for the private WNL repo (leaves the shared public
--- github_integration used by other apps untouched).
-CREATE API INTEGRATION IF NOT EXISTS github_wnl_private_integration
-  API_PROVIDER = git_https_api
-  API_ALLOWED_PREFIXES = ('https://github.com/wnl-icb-analytics')
-  ALLOWED_AUTHENTICATION_SECRETS = (pod_group_manager_git_secret)
-  ENABLED = TRUE;
-
 CREATE OR REPLACE GIT REPOSITORY POD_GROUP_MANAGER_REPO
-  API_INTEGRATION = github_wnl_private_integration
-  GIT_CREDENTIALS = pod_group_manager_git_secret
+  API_INTEGRATION = API__GITHUB__WNL_ICB_ANALYTICS
   ORIGIN = 'https://github.com/wnl-icb-analytics/pod-group-manager.git';
 
 ALTER GIT REPOSITORY POD_GROUP_MANAGER_REPO FETCH;
 
-GRANT READ ON GIT REPOSITORY POD_GROUP_MANAGER_REPO TO ROLE ENGINEER;
+GRANT READ  ON GIT REPOSITORY POD_GROUP_MANAGER_REPO TO ROLE ENGINEER;
 GRANT WRITE ON GIT REPOSITORY POD_GROUP_MANAGER_REPO TO ROLE ENGINEER;
-GRANT READ ON GIT REPOSITORY POD_GROUP_MANAGER_REPO TO ROLE ANALYST;
+GRANT READ  ON GIT REPOSITORY POD_GROUP_MANAGER_REPO TO ROLE ANALYST;
 
 -- -----------------------------------------------------
 -- 2. Create the Streamlit app from the repo

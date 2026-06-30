@@ -45,3 +45,44 @@ def upsert_option(name, sort_order, is_active):
         return msg.startswith("SUCCESS"), msg
     except Exception as e:
         return False, str(e)
+
+
+def set_orders(ordered_names):
+    """Assign sort_order 1..N to options in the given order (single statement)."""
+    if not ordered_names:
+        return True, "nothing to do"
+    try:
+        values = ", ".join(f"({sql_str(n)}, {i})" for i, n in enumerate(ordered_names, start=1))
+        conn.sql(
+            f"""
+            UPDATE {DB_SCHEMA}.POD_GROUP_OPTION t
+            SET sort_order = v.ord
+            FROM (VALUES {values}) AS v(name, ord)
+            WHERE t.pod_group_name = v.name
+            """
+        ).collect()
+        return True, "reordered"
+    except Exception as e:
+        return False, str(e)
+
+
+def set_active(name, is_active):
+    """Toggle an option's active flag."""
+    try:
+        active_sql = "TRUE" if is_active else "FALSE"
+        conn.sql(
+            f"UPDATE {DB_SCHEMA}.POD_GROUP_OPTION SET is_active = {active_sql} "
+            f"WHERE pod_group_name = {sql_str(name)}"
+        ).collect()
+        return True, "updated"
+    except Exception as e:
+        return False, str(e)
+
+
+def next_order():
+    """Next sort_order value (max + 1), for appending a new option."""
+    try:
+        df = conn.sql(f"SELECT COALESCE(MAX(sort_order), 0) + 1 AS N FROM {DB_SCHEMA}.POD_GROUP_OPTION").to_pandas()
+        return int(df.iloc[0]["N"]) if not df.empty else 1
+    except Exception:
+        return 1

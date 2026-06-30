@@ -1,0 +1,7 @@
+name: pod_group_manager
+channels:
+  - snowflake
+dependencies:
+  - streamlit
+  - pandas
+  - snowflake-snowpark-python

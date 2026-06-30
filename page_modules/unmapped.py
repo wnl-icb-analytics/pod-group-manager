@@ -60,7 +60,7 @@ def render_unmapped():
 
         for _, r in df.iterrows():
             key = r["POD_LOOKUP"]
-            c = st.columns([3, 1.4, 2, 2])
+            c = st.columns([3, 1.4, 2, 2], vertical_alignment="center")
             with c[0]:
                 st.markdown(
                     f"{display_component(r['POINT_OF_DELIVERY_CODE'])} / "

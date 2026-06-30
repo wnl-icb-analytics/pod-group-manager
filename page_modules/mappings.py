@@ -23,8 +23,7 @@ def render_mappings():
     # --- Search / filter -------------------------------------------------
     c1, c2 = st.columns([3, 2])
     with c1:
-        term = st.text_input("Search", placeholder="code, description or POD group…",
-                             label_visibility="collapsed")
+        term = st.text_input("Search", placeholder="code, description or POD group…")
     with c2:
         group_filter = st.selectbox("Filter by group", ["All groups"] + options)
 

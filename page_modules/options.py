@@ -18,7 +18,7 @@ def render_options():
     st.markdown("### Add or update an option")
     with st.form("option_form"):
         name = st.text_input("POD group name")
-        c1, c2 = st.columns(2)
+        c1, c2 = st.columns(2, vertical_alignment="bottom")
         with c1:
             order = st.number_input("Sort order", min_value=0, max_value=999, value=99, step=1)
         with c2:

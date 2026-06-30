@@ -45,6 +45,40 @@ def format_number(num):
         return str(num)
 
 
+def num(n):
+    """Integer with thousands separators; '0' for missing."""
+    if pd.isnull(n):
+        return "0"
+    try:
+        return f"{float(n):,.0f}"
+    except (ValueError, TypeError):
+        return str(n)
+
+
+def money(n):
+    """Pounds with thousands separators; '£0' for missing."""
+    if pd.isnull(n):
+        return "£0"
+    try:
+        return f"£{float(n):,.0f}"
+    except (ValueError, TypeError):
+        return str(n)
+
+
+def compact(n, prefix=""):
+    """Short magnitude form: 1.5bn, 23.0m, 4.2k."""
+    if pd.isnull(n):
+        return f"{prefix}0"
+    try:
+        v = float(n)
+    except (ValueError, TypeError):
+        return str(n)
+    for div, suf in ((1e9, "bn"), (1e6, "m"), (1e3, "k")):
+        if abs(v) >= div:
+            return f"{prefix}{v / div:.1f}{suf}"
+    return f"{prefix}{v:,.0f}"
+
+
 def display_component(value):
     """Render a component field, showing '∅' for missing (NULL) values."""
     if value is None or (isinstance(value, float) and pd.isnull(value)):

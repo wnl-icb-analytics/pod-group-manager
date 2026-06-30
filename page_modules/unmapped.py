@@ -9,8 +9,7 @@ from services.options_service import get_option_names
 from services.mapping_service import upsert_mapping
 from utils.helpers import display_component
 
-ASSIGN_COL = "Assign group"
-NOTES_COL = "Notes"
+SKIP = "— skip —"
 
 
 def render_unmapped():
@@ -36,63 +35,84 @@ def render_unmapped():
         st.error("No active POD group options. Add some on the Options page first.")
         return
 
-    st.markdown(f"**{len(df)}** unmapped combination(s) for **{fy}**")
+    keys = df["POD_LOOKUP"].tolist()
+    st.markdown(f"**{len(df)}** unmapped combination(s) for **{fy}** — choose a group, then Save.")
 
-    # Build editable grid: read-only context columns + two editable columns
-    editor_df = pd.DataFrame({
-        "POD lookup": df["POD_LOOKUP"],
-        "POD code": df["POINT_OF_DELIVERY_CODE"].map(display_component),
-        "Local code": df["LOCAL_POINT_OF_DELIVERY_CODE"].map(display_component),
-        "Local description": df["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"].map(display_component),
-        "Records": df["RECORD_COUNT"],
-        "Providers": df["PROVIDERS"],
-        ASSIGN_COL: ["" for _ in range(len(df))],
-        NOTES_COL: ["" for _ in range(len(df))],
-    })
+    # Bulk helper: many combinations share a group, so pre-fill all unset rows.
+    b1, b2 = st.columns([3, 1])
+    with b1:
+        bulk_group = st.selectbox("Set all unset rows to", [SKIP] + options, key=f"bulk_{fy}")
+    with b2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.button(
+            "Apply to unset", use_container_width=True,
+            disabled=(bulk_group == SKIP),
+            on_click=_bulk_apply, args=(fy, keys, bulk_group),
+        )
 
-    edited = st.data_editor(
-        editor_df,
-        use_container_width=True,
-        hide_index=True,
-        disabled=["POD lookup", "POD code", "Local code", "Local description", "Records", "Providers"],
-        column_config={
-            "Records": st.column_config.NumberColumn(help="Lines in the latest provider files"),
-            ASSIGN_COL: st.column_config.SelectboxColumn(
-                options=[""] + options, required=False,
-                help="Choose the POD group overview for this combination",
-            ),
-            NOTES_COL: st.column_config.TextColumn(help="Optional reason / context"),
-        },
-        key=f"unmapped_editor_{fy}",
-    )
+    # Assignment form: one native dropdown per row (single click to open)
+    with st.form(f"assign_{fy}"):
+        h = st.columns([3, 1.4, 2, 2])
+        h[0].caption("Combination (POD / local / description)")
+        h[1].caption("Records · providers")
+        h[2].caption("POD group")
+        h[3].caption("Note")
 
-    # An unselected SelectboxColumn cell can come back as "" or NaN; treat both as blank
-    assign = edited[ASSIGN_COL].fillna("").astype(str).str.strip()
-    pending = edited[assign.isin(options)]
-    st.caption(f"{len(pending)} row(s) ready to assign.")
+        for _, r in df.iterrows():
+            key = r["POD_LOOKUP"]
+            c = st.columns([3, 1.4, 2, 2])
+            with c[0]:
+                st.markdown(
+                    f"{display_component(r['POINT_OF_DELIVERY_CODE'])} / "
+                    f"{display_component(r['LOCAL_POINT_OF_DELIVERY_CODE'])} / "
+                    f"{display_component(r['LOCAL_POINT_OF_DELIVERY_DESCRIPTION'])}"
+                )
+                st.caption(key)
+            c[1].markdown(f"{int(r['RECORD_COUNT']):,}  \n`{r['PROVIDERS']}`")
+            c[2].selectbox("group", [SKIP] + options, key=f"grp_{fy}_{key}", label_visibility="collapsed")
+            c[3].text_input("note", key=f"note_{fy}_{key}", label_visibility="collapsed", placeholder="optional")
 
-    if st.button("💾 Save assignments", type="primary", disabled=pending.empty):
-        ok, fail = 0, []
-        # Map back to original component values (real NULLs) by POD lookup
-        src = df.set_index("POD_LOOKUP")
-        for _, row in pending.iterrows():
-            key = row["POD lookup"]
-            r = src.loc[key]
-            success, msg = upsert_mapping(
-                _val(r["POINT_OF_DELIVERY_CODE"]),
-                _val(r["LOCAL_POINT_OF_DELIVERY_CODE"]),
-                _val(r["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"]),
-                row[ASSIGN_COL],
-                row[NOTES_COL] or None,
-            )
-            if success:
-                ok += 1
-            else:
-                fail.append(f"{key}: {msg}")
-        if ok:
-            st.success(f"✅ Assigned {ok} mapping(s).")
-        if fail:
-            st.error("Some rows failed:\n\n" + "\n\n".join(fail))
+        submitted = st.form_submit_button("💾 Save assignments", type="primary")
+
+    if submitted:
+        _save(fy, df)
+
+
+def _bulk_apply(fy, keys, group):
+    """Pre-select a group for every row still left unset."""
+    for key in keys:
+        sk = f"grp_{fy}_{key}"
+        if st.session_state.get(sk, SKIP) == SKIP:
+            st.session_state[sk] = group
+
+
+def _save(fy, df):
+    options = get_option_names(active_only=True)
+    ok, fail = 0, []
+    for _, r in df.iterrows():
+        key = r["POD_LOOKUP"]
+        group = st.session_state.get(f"grp_{fy}_{key}", SKIP)
+        if group not in options:
+            continue
+        note = st.session_state.get(f"note_{fy}_{key}") or None
+        success, msg = upsert_mapping(
+            _val(r["POINT_OF_DELIVERY_CODE"]),
+            _val(r["LOCAL_POINT_OF_DELIVERY_CODE"]),
+            _val(r["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"]),
+            group, note,
+        )
+        if success:
+            ok += 1
+        else:
+            fail.append(f"{key}: {msg}")
+
+    if ok:
+        st.success(f"✅ Assigned {ok} mapping(s).")
+    if fail:
+        st.error("Some rows failed:\n\n" + "\n\n".join(fail))
+    if not ok and not fail:
+        st.info("No rows selected — choose a group for at least one row.")
+    if ok:
         st.rerun()
 
 

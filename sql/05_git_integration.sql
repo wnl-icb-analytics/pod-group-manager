@@ -46,8 +46,9 @@ GRANT USAGE ON STREAMLIT POD_GROUP_MANAGER TO ROLE ANALYST;
 -- -----------------------------------------------------
 -- 3. Maintenance
 -- -----------------------------------------------------
--- Pull latest app changes after pushing to GitHub: fetch the repo, then add a
--- new version to the Streamlit from the branch tip.
+-- Pull latest app changes after pushing to GitHub: fetch the repo, then
+-- re-create the Streamlit FROM the branch to re-pin to the new commit.
+-- (The FROM clause makes a branch-tracking "live" version, so ADD VERSION is
+-- rejected; CREATE OR REPLACE is the simple, deterministic update.)
 --   ALTER GIT REPOSITORY EXTERNAL_ACCESS.GITHUB.POD_GROUP_MANAGER_REPO FETCH;
---   ALTER STREAMLIT DATA_LAKE__NCL.POD_GROUP_MANAGER.POD_GROUP_MANAGER
---     ADD VERSION FROM '@EXTERNAL_ACCESS.GITHUB.POD_GROUP_MANAGER_REPO/branches/main';
+--   <re-run the CREATE OR REPLACE STREAMLIT statement above>

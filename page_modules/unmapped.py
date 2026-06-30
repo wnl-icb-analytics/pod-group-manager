@@ -54,23 +54,21 @@ def render_unmapped():
 
     # Assignment form: one native dropdown per row (single click to open)
     with st.form(f"assign_{fy}"):
-        h = st.columns([3, 1.2, 2, 2])
+        h = st.columns([3, 1.5, 2, 2])
         h[0].caption("Combination · POD / local / description")
-        h[1].caption("Records")
+        h[1].caption("Records · provider")
         h[2].caption("POD group")
         h[3].caption("Note")
 
         for _, r in df.iterrows():
             key = r["POD_LOOKUP"]
-            c = st.columns([3, 1.2, 2, 2], vertical_alignment="center")
+            c = st.columns([3, 1.5, 2, 2], vertical_alignment="center")
             c[0].markdown(
                 f"{display_component(r['POINT_OF_DELIVERY_CODE'])} / "
                 f"{display_component(r['LOCAL_POINT_OF_DELIVERY_CODE'])} / "
                 f"{display_component(r['LOCAL_POINT_OF_DELIVERY_DESCRIPTION'])}"
             )
-            with c[1]:
-                st.markdown(f"{int(r['RECORD_COUNT']):,}")
-                st.caption(r["PROVIDERS"])
+            c[1].markdown(f"{int(r['RECORD_COUNT']):,} · :grey[{r['PROVIDERS']}]")
             c[2].selectbox("group", [UNMAPPED] + options, key=f"grp_{fy}_{key}", label_visibility="collapsed")
             c[3].text_input("note", key=f"note_{fy}_{key}", label_visibility="collapsed", placeholder="optional")
 

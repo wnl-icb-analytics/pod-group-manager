@@ -7,10 +7,17 @@ import streamlit as st
 from services.unmapped_service import get_financial_years, get_unmapped
 from services.options_service import get_option_names
 from services.mapping_service import upsert_mapping
-from utils.helpers import display_component
 
 UNMAPPED = "— unmapped —"      # per-row default: leave the row unmapped
 CHOOSE = "— select group —"    # bulk control default: nothing chosen
+COLS = [1.1, 1.1, 2, 1.4, 2.2, 2]
+
+
+def _cell(v):
+    """Render a component value, or a muted dash when empty (NULL)."""
+    if v is None or (isinstance(v, float) and pd.isnull(v)):
+        return ":grey[—]"
+    return str(v)
 
 
 def render_unmapped():
@@ -54,23 +61,21 @@ def render_unmapped():
 
     # Assignment form: one native dropdown per row (single click to open)
     with st.form(f"assign_{fy}"):
-        h = st.columns([3, 1.5, 2, 2])
-        h[0].caption("Combination · POD / local / description")
-        h[1].caption("Records · provider")
-        h[2].caption("POD group")
-        h[3].caption("Note")
+        h = st.columns(COLS)
+        for col, label in zip(h, ["POD code", "Local code", "Local description",
+                                   "Records · provider", "POD group", "Note"]):
+            col.caption(label)
 
         for _, r in df.iterrows():
             key = r["POD_LOOKUP"]
-            c = st.columns([3, 1.5, 2, 2], vertical_alignment="center")
-            c[0].markdown(
-                f"{display_component(r['POINT_OF_DELIVERY_CODE'])} / "
-                f"{display_component(r['LOCAL_POINT_OF_DELIVERY_CODE'])} / "
-                f"{display_component(r['LOCAL_POINT_OF_DELIVERY_DESCRIPTION'])}"
-            )
-            c[1].markdown(f"{int(r['RECORD_COUNT']):,} · :grey[{r['PROVIDERS']}]")
-            c[2].selectbox("group", [UNMAPPED] + options, key=f"grp_{fy}_{key}", label_visibility="collapsed")
-            c[3].text_input("note", key=f"note_{fy}_{key}", label_visibility="collapsed", placeholder="optional")
+            with st.container(border=True):
+                c = st.columns(COLS, vertical_alignment="center")
+                c[0].markdown(_cell(r["POINT_OF_DELIVERY_CODE"]))
+                c[1].markdown(_cell(r["LOCAL_POINT_OF_DELIVERY_CODE"]))
+                c[2].markdown(_cell(r["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"]))
+                c[3].markdown(f"{int(r['RECORD_COUNT']):,} · :grey[{r['PROVIDERS']}]")
+                c[4].selectbox("group", [UNMAPPED] + options, key=f"grp_{fy}_{key}", label_visibility="collapsed")
+                c[5].text_input("note", key=f"note_{fy}_{key}", label_visibility="collapsed", placeholder="optional")
 
         submitted = st.form_submit_button("💾 Save assignments", type="primary")
 

@@ -21,7 +21,7 @@ def get_all_mappings():
                 old_pod_group_overview, notes, insertion_date,
                 created_by, created_at, updated_by, updated_at
             FROM {DB_SCHEMA}.POD_GROUP_MAPPING
-            ORDER BY pod_group_overview_master, pod_lookup
+            ORDER BY pod_lookup
             """
         ).to_pandas()
     except Exception as e:

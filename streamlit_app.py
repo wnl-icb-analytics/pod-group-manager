@@ -23,12 +23,13 @@ with col1:
     st.caption("Assign and maintain POD group overview mappings")
 with col2:
     st.markdown("<br>", unsafe_allow_html=True)
-    n1, n2, n3, n4 = st.columns(4)
+    n1, n2, n3, n4, n5 = st.columns(5)
     pages = [
         (n1, "Unmapped", "home"),
         (n2, "Mappings", "mappings"),
         (n3, "Analytics", "analytics"),
         (n4, "Options", "options"),
+        (n5, "SQL", "reference"),
     ]
     for col, label, key in pages:
         with col:
@@ -53,3 +54,6 @@ elif st.session_state.page == "analytics":
 elif st.session_state.page == "options":
     from page_modules.options import render_options
     render_options()
+elif st.session_state.page == "reference":
+    from page_modules.reference import render_reference
+    render_reference()

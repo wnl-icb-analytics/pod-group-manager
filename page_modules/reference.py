@@ -59,7 +59,8 @@ def render_reference():
     st.caption(
         "Join `STG_LSACM_LATEST` to the mappings on `POD_LOOKUP` when you need a column "
         "`V_POD_ACTIVITY` doesn't carry. Add any staging column as a dimension — e.g. "
-        "`ACTIVITY_TREATMENT_FUNCTION_CODE`, `COMMISSIONER_CODE`."
+        "`ACTIVITY_TREATMENT_FUNCTION_CODE`, `COMMISSIONER_CODE`. Staging also gives "
+        "clean typed `DV_FINANCIAL_YEAR` / `DV_FINANCIAL_MONTH` to filter by period."
     )
     st.code(
         "SELECT\n"

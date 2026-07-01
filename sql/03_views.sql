@@ -65,7 +65,13 @@ SELECT
     LISTAGG(DISTINCT s.provider_code, ', ')
         WITHIN GROUP (ORDER BY s.provider_code) AS PROVIDERS
 FROM source s
-LEFT JOIN POD_GROUP_MAPPING m ON s.pod_lookup = m.pod_lookup
+-- Match on the three components (NULL-safe) rather than the concatenated key:
+-- the delimiter-free concat can collide (e.g. 'AB'+'C' = 'A'+'BC'), which would
+-- wrongly treat a genuinely-unmapped combination as mapped.
+LEFT JOIN POD_GROUP_MAPPING m
+    ON  EQUAL_NULL(s.POINT_OF_DELIVERY_CODE,           m.point_of_delivery_code)
+    AND EQUAL_NULL(s.LOCAL_POINT_OF_DELIVERY_CODE,     m.local_point_of_delivery_code)
+    AND EQUAL_NULL(s.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, m.local_point_of_delivery_description)
 WHERE m.pod_lookup IS NULL
 GROUP BY 1, 2, 3, 4, 5
 ORDER BY RECORD_COUNT DESC, POD_LOOKUP;
@@ -80,11 +86,9 @@ WITH source AS (
     SELECT
         lf.FINANCIAL_YEAR AS financial_year,
         lf.PROVIDER_CODE  AS provider_code,
-        CONCAT(
-            IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),
-            IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
-            IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
-        ) AS pod_lookup,
+        L.POINT_OF_DELIVERY_CODE              AS point_of_delivery_code,
+        L.LOCAL_POINT_OF_DELIVERY_CODE        AS local_point_of_delivery_code,
+        L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION AS local_point_of_delivery_description,
         L.DV_ACTUAL_ACTIVITY    AS actual_activity,
         L.DV_ACTUAL_PRICE       AS actual_price,
         L.DV_PLANNED_ACTIVITY   AS planned_activity,
@@ -103,29 +107,10 @@ SELECT
     SUM(s.planned_activity)                       AS PLANNED_ACTIVITY,
     SUM(s.planned_price)                          AS PLANNED_PRICE
 FROM source s
-LEFT JOIN POD_GROUP_MAPPING m ON s.pod_lookup = m.pod_lookup
-GROUP BY 1, 2, 3, 4;
-
--- -----------------------------------------------------
--- Row-level LSACM tagged with its POD group, so analysts can group by POD
--- group without rebuilding the POD_LOOKUP key. Sourced from the sum-safe
--- STG_LSACM_LATEST (all submitting providers - broader than the in-scope set
--- behind V_POD_ACTIVITY). Measures keep their DV_ staging names.
--- -----------------------------------------------------
-CREATE OR REPLACE VIEW V_LSACM_POD_GROUP AS
-SELECT
-    COALESCE(m.pod_group_overview_master, '(unmapped)') AS POD_GROUP,
-    IFF(m.pod_lookup IS NOT NULL, TRUE, FALSE)          AS IS_MAPPED,
-    CONCAT(
-        IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),
-        IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
-        IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
-    )                                                   AS POD_LOOKUP,
-    L.*
-FROM STAGING.LSACM.STG_LSACM_LATEST L
+-- NULL-safe match on the three components; avoids the delimiter-free concat
+-- key colliding distinct combinations onto one mapping (see V_UNMAPPED_PODS).
 LEFT JOIN POD_GROUP_MAPPING m
-    ON CONCAT(
-         IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),
-         IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
-         IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
-       ) = m.pod_lookup;
+    ON  EQUAL_NULL(s.point_of_delivery_code,           m.point_of_delivery_code)
+    AND EQUAL_NULL(s.local_point_of_delivery_code,     m.local_point_of_delivery_code)
+    AND EQUAL_NULL(s.local_point_of_delivery_description, m.local_point_of_delivery_description)
+GROUP BY 1, 2, 3, 4;

@@ -65,9 +65,11 @@ SELECT
     LISTAGG(DISTINCT s.provider_code, ', ')
         WITHIN GROUP (ORDER BY s.provider_code) AS PROVIDERS
 FROM source s
--- Match on the three components (NULL-safe) rather than the concatenated key:
--- the delimiter-free concat can collide (e.g. 'AB'+'C' = 'A'+'BC'), which would
--- wrongly treat a genuinely-unmapped combination as mapped.
+-- Match on the three component codes rather than the concatenated key: the
+-- delimiter-free concat can collide (e.g. 'AB'+'C' = 'A'+'BC') and wrongly treat
+-- an unmapped combination as mapped. EQUAL_NULL is NULL-safe equality - it
+-- matches when both sides are NULL (a component code is often NULL), whereas a
+-- plain = returns NULL there and the row would fall through as unmapped.
 LEFT JOIN POD_GROUP_MAPPING m
     ON  EQUAL_NULL(s.POINT_OF_DELIVERY_CODE,           m.point_of_delivery_code)
     AND EQUAL_NULL(s.LOCAL_POINT_OF_DELIVERY_CODE,     m.local_point_of_delivery_code)
@@ -107,8 +109,10 @@ SELECT
     SUM(s.planned_activity)                       AS PLANNED_ACTIVITY,
     SUM(s.planned_price)                          AS PLANNED_PRICE
 FROM source s
--- NULL-safe match on the three components; avoids the delimiter-free concat
--- key colliding distinct combinations onto one mapping (see V_UNMAPPED_PODS).
+-- EQUAL_NULL is NULL-safe equality: it matches when both sides are NULL (a
+-- component code is often NULL), where a plain = would return NULL and drop the
+-- row to unmapped. Matching the three codes also avoids the concat key's
+-- collisions (see V_UNMAPPED_PODS).
 LEFT JOIN POD_GROUP_MAPPING m
     ON  EQUAL_NULL(s.point_of_delivery_code,           m.point_of_delivery_code)
     AND EQUAL_NULL(s.local_point_of_delivery_code,     m.local_point_of_delivery_code)

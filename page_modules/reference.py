@@ -71,6 +71,8 @@ def render_reference():
         "    SUM(L.DV_ACTUAL_PRICE) - SUM(L.DV_PLANNED_PRICE)    AS variance\n"
         "FROM STAGING.LSACM.STG_LSACM_LATEST L\n"
         f"LEFT JOIN {DB_SCHEMA}.POD_GROUP_MAPPING m\n"
+        "    -- EQUAL_NULL = NULL-safe equality: matches NULL to NULL (a code is\n"
+        "    -- often NULL); a plain = would drop those rows to unmapped.\n"
         "    ON  EQUAL_NULL(L.POINT_OF_DELIVERY_CODE,            m.POINT_OF_DELIVERY_CODE)\n"
         "    AND EQUAL_NULL(L.LOCAL_POINT_OF_DELIVERY_CODE,      m.LOCAL_POINT_OF_DELIVERY_CODE)\n"
         "    AND EQUAL_NULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, m.LOCAL_POINT_OF_DELIVERY_DESCRIPTION)\n"

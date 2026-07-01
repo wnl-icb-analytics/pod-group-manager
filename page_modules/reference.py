@@ -56,14 +56,15 @@ def render_reference():
     st.caption(
         "The join key `POD_LOOKUP` is the three component codes concatenated, with "
         "`?` for nulls. Build the same key and LEFT JOIN to the mapping table; "
-        "`COALESCE` labels anything not yet mapped. Scope `LSACM` yourself "
-        "(e.g. via `V_LATEST_FILES`) — a raw join spans every file."
+        "`COALESCE` labels anything not yet mapped. `STG_LSACM_LATEST` is the "
+        "current-statement, sum-safe view (latest file per provider); full history "
+        "is in `STG_LSACM`."
     )
     st.code(
         "SELECT\n"
         "    COALESCE(m.POD_GROUP_OVERVIEW_MASTER, '(unmapped)') AS pod_group,\n"
-        "    SUM(L.CONTRACT_MONITORING_ACTUAL_ACTIVITY)          AS actual_activity\n"
-        "FROM DATA_LAKE.SDL.LSACM L\n"
+        "    SUM(L.DV_ACTUAL_ACTIVITY)                           AS actual_activity\n"
+        "FROM STAGING.LSACM.STG_LSACM_LATEST L\n"
         f"LEFT JOIN {DB_SCHEMA}.POD_GROUP_MAPPING m\n"
         "    ON CONCAT(\n"
         "         IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),\n"

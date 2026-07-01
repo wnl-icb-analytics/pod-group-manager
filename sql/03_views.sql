@@ -51,7 +51,7 @@ WITH source AS (
             IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
             IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
         ) AS pod_lookup
-    FROM DATA_LAKE.SDL.LSACM L
+    FROM STAGING.LSACM.STG_LSACM L
     JOIN V_LATEST_FILES lf ON L.META_FILE_ID = lf.FILE_ID
 )
 SELECT
@@ -85,11 +85,11 @@ WITH source AS (
             IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
             IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
         ) AS pod_lookup,
-        L.CONTRACT_MONITORING_ACTUAL_ACTIVITY   AS actual_activity,
-        L.CONTRACT_MONITORING_ACTUAL_PRICE      AS actual_price,
-        L.CONTRACT_MONITORING_PLANNED_ACTIVITY  AS planned_activity,
-        L.CONTRACT_MONITORING_PLANNED_PRICE     AS planned_price
-    FROM DATA_LAKE.SDL.LSACM L
+        L.DV_ACTUAL_ACTIVITY    AS actual_activity,
+        L.DV_ACTUAL_PRICE       AS actual_price,
+        L.DV_PLANNED_ACTIVITY   AS planned_activity,
+        L.DV_PLANNED_PRICE      AS planned_price
+    FROM STAGING.LSACM.STG_LSACM L
     JOIN V_LATEST_FILES lf ON L.META_FILE_ID = lf.FILE_ID
 )
 SELECT

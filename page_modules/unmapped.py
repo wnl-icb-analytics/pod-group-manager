@@ -2,11 +2,18 @@
 # POD Group Manager - Unmapped Queue (core workflow)
 # =============================================================================
 
+import altair as alt
 import pandas as pd
 import streamlit as st
-from services.unmapped_service import get_financial_years, get_unmapped
+from services.unmapped_service import (
+    get_financial_years, get_unmapped,
+    get_unmapped_summary, get_unmapped_value_by_provider,
+)
 from services.options_service import get_option_names
 from services.mapping_service import upsert_mapping
+from utils.helpers import compact
+
+BLUE = "#1d4ed8"
 
 UNMAPPED = "— unmapped —"      # per-row default: leave the row unmapped
 CHOOSE = "— select group —"    # bulk control default: nothing chosen
@@ -42,6 +49,21 @@ def render_unmapped():
     if not options:
         st.error("No active POD group options. Add some on the Options page first.")
         return
+
+    # Headline totals for the unmapped rows only.
+    s = get_unmapped_summary(fy)
+    if s:
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Actual activity", compact(s["activity"]))
+        m2.metric("Actual value", compact(s["value"], "£"))
+        m3.metric("Records", compact(s["records"]))
+
+    prov = get_unmapped_value_by_provider(fy)
+    if not prov.empty:
+        st.markdown("**Unmapped value (£) by provider**")
+        _provider_chart(prov)
+
+    st.divider()
 
     keys = df["POD_LOOKUP"].tolist()
     st.markdown(f"**{len(df)}** unmapped combination(s) for **{fy}** — choose a group, then Save.")
@@ -126,3 +148,23 @@ def _val(v):
     if v is None or (isinstance(v, float) and pd.isnull(v)):
         return None
     return str(v)
+
+
+def _provider_chart(df):
+    """Horizontal bar of unmapped value (£) per provider, sorted by value."""
+    chart = (
+        alt.Chart(df)
+        .mark_bar(color=BLUE)
+        .encode(
+            x=alt.X("ACTUAL_PRICE:Q", title="Value (£)", axis=alt.Axis(format="~s")),
+            y=alt.Y("PROVIDER_CODE:N", sort="-x", title=None),
+            tooltip=[
+                alt.Tooltip("PROVIDER_CODE:N", title="Provider"),
+                alt.Tooltip("ACTUAL_PRICE:Q", title="Value (£)", format=",.0f"),
+                alt.Tooltip("ACTUAL_ACTIVITY:Q", title="Activity", format=",.0f"),
+                alt.Tooltip("RECORDS:Q", title="Records", format=",.0f"),
+            ],
+        )
+        .properties(height=max(180, 26 * len(df)))
+    )
+    st.altair_chart(chart, use_container_width=True)

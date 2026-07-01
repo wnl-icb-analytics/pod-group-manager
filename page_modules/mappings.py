@@ -31,11 +31,11 @@ def render_mappings():
     if term:
         t = term.lower()
         mask = (
-            view["POD_LOOKUP"].str.lower().str.contains(t, na=False)
-            | view["POINT_OF_DELIVERY_CODE"].astype(str).str.lower().str.contains(t, na=False)
-            | view["LOCAL_POINT_OF_DELIVERY_CODE"].astype(str).str.lower().str.contains(t, na=False)
-            | view["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"].astype(str).str.lower().str.contains(t, na=False)
-            | view["POD_GROUP_OVERVIEW_MASTER"].astype(str).str.lower().str.contains(t, na=False)
+            view["POD_LOOKUP"].str.lower().str.contains(t, na=False, regex=False)
+            | view["POINT_OF_DELIVERY_CODE"].astype(str).str.lower().str.contains(t, na=False, regex=False)
+            | view["LOCAL_POINT_OF_DELIVERY_CODE"].astype(str).str.lower().str.contains(t, na=False, regex=False)
+            | view["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"].astype(str).str.lower().str.contains(t, na=False, regex=False)
+            | view["POD_GROUP_OVERVIEW_MASTER"].astype(str).str.lower().str.contains(t, na=False, regex=False)
         )
         view = view[mask]
     if group_filter != "All groups":

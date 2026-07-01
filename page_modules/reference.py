@@ -27,7 +27,10 @@ def render_reference():
     )
 
     st.markdown("#### The mappings")
-    st.caption("Look up any combination's group, or browse the full lookup.")
+    st.caption(
+        "Look up any combination's group, or browse the full lookup. `POD_LOOKUP` is "
+        "the three component codes concatenated, with `?` for nulls."
+    )
     st.code(
         f"SELECT *\n"
         f"FROM {DB_SCHEMA}.V_POD_GROUP_OVERVIEW\n"
@@ -52,18 +55,18 @@ def render_reference():
         language="sql",
     )
 
-    st.markdown("#### Add POD groups to your own query")
+    st.markdown("#### Plan vs actual by POD group")
     st.caption(
-        "Only needed for row-level or custom queries — `V_POD_ACTIVITY` above already "
-        "does this. `POD_LOOKUP` is the three component codes concatenated (`?` for "
-        "nulls); build the same key, LEFT JOIN the mapping table, and `COALESCE` "
-        "labels anything unmapped. `STG_LSACM_LATEST` is the latest file per provider; "
-        "full history is in `STG_LSACM`."
+        "Join `STG_LSACM_LATEST` to the mappings on `POD_LOOKUP` when you need a column "
+        "`V_POD_ACTIVITY` doesn't carry. Add any staging column as a dimension — e.g. "
+        "`ACTIVITY_TREATMENT_FUNCTION_CODE`, `COMMISSIONER_CODE`."
     )
     st.code(
         "SELECT\n"
         "    COALESCE(m.POD_GROUP_OVERVIEW_MASTER, '(unmapped)') AS pod_group,\n"
-        "    SUM(L.DV_ACTUAL_ACTIVITY)                           AS actual_activity\n"
+        "    SUM(L.DV_ACTUAL_PRICE)                              AS actual_value,\n"
+        "    SUM(L.DV_PLANNED_PRICE)                             AS planned_value,\n"
+        "    SUM(L.DV_ACTUAL_PRICE) - SUM(L.DV_PLANNED_PRICE)    AS variance\n"
         "FROM STAGING.LSACM.STG_LSACM_LATEST L\n"
         f"LEFT JOIN {DB_SCHEMA}.POD_GROUP_MAPPING m\n"
         "    ON CONCAT(\n"
@@ -71,8 +74,9 @@ def render_reference():
         "         IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),\n"
         "         IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')\n"
         "       ) = m.POD_LOOKUP\n"
+        "WHERE L.DV_FINANCIAL_YEAR = '202627'\n"
         "GROUP BY 1\n"
-        "ORDER BY actual_activity DESC;",
+        "ORDER BY variance DESC;",
         language="sql",
     )
 

@@ -21,8 +21,9 @@ def render_reference():
 | --- | --- |
 | `V_POD_GROUP_OVERVIEW` | Current mappings — each `POD_LOOKUP` and its `POD_GROUP_OVERVIEW_MASTER`. |
 | `V_POD_ACTIVITY` | Activity from the latest file per in-scope provider, already joined to the mappings and grouped by POD group. |
+| `V_LSACM_POD_GROUP` | Row-level LSACM (latest file, all providers) tagged with its `POD_GROUP` — every staging column, group by anything. |
 | `V_UNMAPPED_PODS` | Combinations in the latest files with no POD group yet (the old *PGO Finder*). |
-| `POD_GROUP_MAPPING` | Underlying mapping table — the join target for your own queries. |
+| `POD_GROUP_MAPPING` | Underlying mapping table. |
 """
     )
 
@@ -57,25 +58,19 @@ def render_reference():
 
     st.markdown("#### Plan vs actual by POD group")
     st.caption(
-        "Join `STG_LSACM_LATEST` to the mappings on `POD_LOOKUP` when you need a column "
-        "`V_POD_ACTIVITY` doesn't carry. Add any staging column as a dimension — e.g. "
-        "`ACTIVITY_TREATMENT_FUNCTION_CODE`, `COMMISSIONER_CODE`. Staging also gives "
-        "clean typed `DV_FINANCIAL_YEAR` / `DV_FINANCIAL_MONTH` to filter by period."
+        "`V_LSACM_POD_GROUP` is row-level LSACM already tagged with `POD_GROUP` — no "
+        "key-building needed. Group by any staging column (e.g. "
+        "`ACTIVITY_TREATMENT_FUNCTION_CODE`, `COMMISSIONER_CODE`) and filter by period "
+        "with the clean typed `DV_FINANCIAL_YEAR` / `DV_FINANCIAL_MONTH`."
     )
     st.code(
         "SELECT\n"
-        "    COALESCE(m.POD_GROUP_OVERVIEW_MASTER, '(unmapped)') AS pod_group,\n"
-        "    SUM(L.DV_ACTUAL_PRICE)                              AS actual_value,\n"
-        "    SUM(L.DV_PLANNED_PRICE)                             AS planned_value,\n"
-        "    SUM(L.DV_ACTUAL_PRICE) - SUM(L.DV_PLANNED_PRICE)    AS variance\n"
-        "FROM STAGING.LSACM.STG_LSACM_LATEST L\n"
-        f"LEFT JOIN {DB_SCHEMA}.POD_GROUP_MAPPING m\n"
-        "    ON CONCAT(\n"
-        "         IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),\n"
-        "         IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),\n"
-        "         IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')\n"
-        "       ) = m.POD_LOOKUP\n"
-        "WHERE L.DV_FINANCIAL_YEAR = '202627'\n"
+        "    POD_GROUP,\n"
+        "    SUM(DV_ACTUAL_PRICE)                         AS actual_value,\n"
+        "    SUM(DV_PLANNED_PRICE)                        AS planned_value,\n"
+        "    SUM(DV_ACTUAL_PRICE) - SUM(DV_PLANNED_PRICE) AS variance\n"
+        f"FROM {DB_SCHEMA}.V_LSACM_POD_GROUP\n"
+        "WHERE DV_FINANCIAL_YEAR = '202627'\n"
         "GROUP BY 1\n"
         "ORDER BY variance DESC;",
         language="sql",

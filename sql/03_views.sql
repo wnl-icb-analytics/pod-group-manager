@@ -105,3 +105,27 @@ SELECT
 FROM source s
 LEFT JOIN POD_GROUP_MAPPING m ON s.pod_lookup = m.pod_lookup
 GROUP BY 1, 2, 3, 4;
+
+-- -----------------------------------------------------
+-- Row-level LSACM tagged with its POD group, so analysts can group by POD
+-- group without rebuilding the POD_LOOKUP key. Sourced from the sum-safe
+-- STG_LSACM_LATEST (all submitting providers - broader than the in-scope set
+-- behind V_POD_ACTIVITY). Measures keep their DV_ staging names.
+-- -----------------------------------------------------
+CREATE OR REPLACE VIEW V_LSACM_POD_GROUP AS
+SELECT
+    COALESCE(m.pod_group_overview_master, '(unmapped)') AS POD_GROUP,
+    IFF(m.pod_lookup IS NOT NULL, TRUE, FALSE)          AS IS_MAPPED,
+    CONCAT(
+        IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),
+        IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
+        IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
+    )                                                   AS POD_LOOKUP,
+    L.*
+FROM STAGING.LSACM.STG_LSACM_LATEST L
+LEFT JOIN POD_GROUP_MAPPING m
+    ON CONCAT(
+         IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),
+         IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
+         IFNULL(L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?')
+       ) = m.pod_lookup;

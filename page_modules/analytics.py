@@ -125,7 +125,8 @@ def _hbar(df, value_col, title, cat="PROVIDER_CODE"):
         .mark_bar()
         .encode(
             x=alt.X(f"{value_col}:Q", title=title, axis=alt.Axis(format="~s")),
-            y=alt.Y(f"{cat}:N", sort="-x", title=None, axis=alt.Axis(labelOverlap=False)),
+            y=alt.Y(f"{cat}:N", sort="-x", title=None,
+                    axis=alt.Axis(labelOverlap=False, labelLimit=1000)),
             color=color,
             tooltip=[alt.Tooltip(f"{cat}:N", title=cat.replace("_", " ").title()),
                      alt.Tooltip(f"{value_col}:Q", title=title, format=",.0f")],

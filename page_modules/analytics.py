@@ -62,9 +62,15 @@ def _unmapped_section(fy):
     p = get_unmapped_by_provider(fy)
     if p.empty:
         return
-    st.markdown("**Unmapped value (£) by provider**")
-    st.caption("Providers carrying unmapped cost. Most unmapped records have no price and are excluded here.")
-    _hbar(p, "ACTUAL_PRICE", "Value (£)")
+
+    st.markdown("**Unmapped records by provider**")
+    _hbar(p, "RECORDS", "Records")
+
+    with_cost = p[p["ACTUAL_PRICE"] != 0]
+    if not with_cost.empty:
+        st.markdown("**Unmapped value (£) by provider**")
+        st.caption("Only providers carrying unmapped cost — most unmapped records have no price.")
+        _hbar(with_cost, "ACTUAL_PRICE", "Value (£)")
 
 
 def _overall_section(fy):
@@ -119,7 +125,7 @@ def _hbar(df, value_col, title, cat="PROVIDER_CODE"):
         .mark_bar()
         .encode(
             x=alt.X(f"{value_col}:Q", title=title, axis=alt.Axis(format="~s")),
-            y=alt.Y(f"{cat}:N", sort="-x", title=None),
+            y=alt.Y(f"{cat}:N", sort="-x", title=None, axis=alt.Axis(labelOverlap=False)),
             color=color,
             tooltip=[alt.Tooltip(f"{cat}:N", title=cat.replace("_", " ").title()),
                      alt.Tooltip(f"{value_col}:Q", title=title, format=",.0f")],

@@ -49,23 +49,22 @@ def get_unmapped_summary(fy=None):
 
 
 def get_unmapped_by_provider(fy=None):
-    """Unmapped value, activity and records per provider."""
+    """Unmapped records, value and activity per provider (all providers)."""
     try:
         return conn.sql(
             f"""
             SELECT PROVIDER_CODE,
+                   SUM(RECORD_COUNT)    AS RECORDS,
                    SUM(ACTUAL_PRICE)    AS ACTUAL_PRICE,
-                   SUM(ACTUAL_ACTIVITY) AS ACTUAL_ACTIVITY,
-                   SUM(RECORD_COUNT)    AS RECORDS
+                   SUM(ACTUAL_ACTIVITY) AS ACTUAL_ACTIVITY
             FROM {DB_SCHEMA}.V_POD_ACTIVITY
             {_where(fy)}{' AND' if fy else 'WHERE'} NOT IS_MAPPED
             GROUP BY PROVIDER_CODE
-            HAVING SUM(ACTUAL_PRICE) <> 0
-            ORDER BY ACTUAL_PRICE DESC NULLS LAST
+            ORDER BY RECORDS DESC NULLS LAST
             """
         ).to_pandas()
     except Exception as e:
-        st.error(f"Error loading unmapped value by provider: {e}")
+        st.error(f"Error loading unmapped by provider: {e}")
         return pd.DataFrame()
 
 

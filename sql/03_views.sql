@@ -69,15 +69,15 @@ SELECT
     LISTAGG(DISTINCT s.provider_code, ', ')
         WITHIN GROUP (ORDER BY s.provider_code) AS PROVIDERS
 FROM source s
--- Match on the three component codes rather than the concatenated key: the
--- delimiter-free concat can collide (e.g. 'AB'+'C' = 'A'+'BC') and wrongly treat
--- an unmapped combination as mapped. EQUAL_NULL is NULL-safe equality - it
--- matches when both sides are NULL (a component code is often NULL), whereas a
--- plain = returns NULL there and the row would fall through as unmapped.
+-- Match the three component codes separately, with IFNULL(...,'?') as a NULL
+-- sentinel (no '?' occurs in the data, so it's NULL-safe). Per-column equality
+-- avoids the collisions a single concatenated key would cause ('AB'+'C' =
+-- 'A'+'BC'), and being plain '=' it hash-joins - unlike EQUAL_NULL, which forces
+-- a slow nested-loop anti-join.
 LEFT JOIN POD_GROUP_MAPPING m
-    ON  EQUAL_NULL(s.POINT_OF_DELIVERY_CODE,           m.point_of_delivery_code)
-    AND EQUAL_NULL(s.LOCAL_POINT_OF_DELIVERY_CODE,     m.local_point_of_delivery_code)
-    AND EQUAL_NULL(s.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, m.local_point_of_delivery_description)
+    ON  IFNULL(s.POINT_OF_DELIVERY_CODE, '?')            = IFNULL(m.point_of_delivery_code, '?')
+    AND IFNULL(s.LOCAL_POINT_OF_DELIVERY_CODE, '?')      = IFNULL(m.local_point_of_delivery_code, '?')
+    AND IFNULL(s.LOCAL_POINT_OF_DELIVERY_DESCRIPTION, '?') = IFNULL(m.local_point_of_delivery_description, '?')
 WHERE m.pod_lookup IS NULL
 GROUP BY 1, 2, 3, 4, 5
 ORDER BY RECORD_COUNT DESC, POD_LOOKUP;
@@ -113,12 +113,11 @@ SELECT
     SUM(s.planned_activity)                       AS PLANNED_ACTIVITY,
     SUM(s.planned_price)                          AS PLANNED_PRICE
 FROM source s
--- EQUAL_NULL is NULL-safe equality: it matches when both sides are NULL (a
--- component code is often NULL), where a plain = would return NULL and drop the
--- row to unmapped. Matching the three codes also avoids the concat key's
--- collisions (see V_UNMAPPED_PODS).
+-- Per-column match with an IFNULL('?') NULL sentinel: NULL-safe, collision-free,
+-- and plain '=' so it hash-joins (fast) rather than EQUAL_NULL's nested loop.
+-- See V_UNMAPPED_PODS.
 LEFT JOIN POD_GROUP_MAPPING m
-    ON  EQUAL_NULL(s.point_of_delivery_code,           m.point_of_delivery_code)
-    AND EQUAL_NULL(s.local_point_of_delivery_code,     m.local_point_of_delivery_code)
-    AND EQUAL_NULL(s.local_point_of_delivery_description, m.local_point_of_delivery_description)
+    ON  IFNULL(s.point_of_delivery_code, '?')            = IFNULL(m.point_of_delivery_code, '?')
+    AND IFNULL(s.local_point_of_delivery_code, '?')      = IFNULL(m.local_point_of_delivery_code, '?')
+    AND IFNULL(s.local_point_of_delivery_description, '?') = IFNULL(m.local_point_of_delivery_description, '?')
 GROUP BY 1, 2, 3, 4;

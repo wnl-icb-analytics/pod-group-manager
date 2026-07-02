@@ -7,10 +7,11 @@ import streamlit as st
 from services.unmapped_service import get_financial_years, get_unmapped
 from services.options_service import get_option_names
 from services.mapping_service import upsert_mapping
+from utils.helpers import num, money
 
 UNMAPPED = "— unmapped —"      # per-row default: leave the row unmapped
 CHOOSE = "— select group —"    # bulk control default: nothing chosen
-COLS = [1.1, 1.1, 2, 1.4, 2.2, 2]
+COLS = [1.0, 1.0, 1.9, 1.9, 2.1, 1.8]
 
 
 def _cell(v):
@@ -63,7 +64,7 @@ def render_unmapped():
     with st.form(f"assign_{fy}"):
         h = st.columns(COLS)
         for col, label in zip(h, ["POD code", "Local code", "Local description",
-                                   "Records · provider", "POD group", "Note"]):
+                                   "Volume · value", "POD group", "Note"]):
             col.caption(label)
 
         for _, r in df.iterrows():
@@ -74,6 +75,7 @@ def render_unmapped():
                 c[1].markdown(_cell(r["LOCAL_POINT_OF_DELIVERY_CODE"]))
                 c[2].markdown(_cell(r["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"]))
                 c[3].markdown(f"{int(r['RECORD_COUNT']):,} · :grey[{r['PROVIDERS']}]")
+                c[3].caption(f"{money(r['ACTUAL_PRICE'])} · {num(r['ACTUAL_ACTIVITY'])} activity")
                 c[4].selectbox("group", [UNMAPPED] + options, key=f"grp_{fy}_{key}", label_visibility="collapsed")
                 c[5].text_input("note", key=f"note_{fy}_{key}", label_visibility="collapsed", placeholder="optional")
 

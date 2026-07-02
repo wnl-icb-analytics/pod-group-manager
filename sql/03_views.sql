@@ -46,6 +46,8 @@ WITH source AS (
         L.POINT_OF_DELIVERY_CODE,
         L.LOCAL_POINT_OF_DELIVERY_CODE,
         L.LOCAL_POINT_OF_DELIVERY_DESCRIPTION,
+        L.DV_ACTUAL_ACTIVITY AS actual_activity,
+        L.DV_ACTUAL_PRICE    AS actual_price,
         CONCAT(
             IFNULL(L.POINT_OF_DELIVERY_CODE, '?'),
             IFNULL(L.LOCAL_POINT_OF_DELIVERY_CODE, '?'),
@@ -61,6 +63,8 @@ SELECT
     s.LOCAL_POINT_OF_DELIVERY_CODE,
     s.LOCAL_POINT_OF_DELIVERY_DESCRIPTION,
     COUNT(*)                                  AS RECORD_COUNT,
+    SUM(s.actual_activity)                    AS ACTUAL_ACTIVITY,
+    SUM(s.actual_price)                       AS ACTUAL_PRICE,
     COUNT(DISTINCT s.provider_code)           AS PROVIDER_COUNT,
     LISTAGG(DISTINCT s.provider_code, ', ')
         WITHIN GROUP (ORDER BY s.provider_code) AS PROVIDERS

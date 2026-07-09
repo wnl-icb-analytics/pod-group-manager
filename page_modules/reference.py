@@ -69,7 +69,7 @@ def render_reference():
         "    SUM(L.DV_ACTUAL_PRICE)                              AS actual_value,\n"
         "    SUM(L.DV_PLANNED_PRICE)                             AS planned_value,\n"
         "    SUM(L.DV_ACTUAL_PRICE) - SUM(L.DV_PLANNED_PRICE)    AS variance\n"
-        "FROM STAGING.LSACM.STG_LSACM_LATEST L\n"
+        "FROM STAGING.SLAM.STG_LSACM_LATEST L\n"
         f"LEFT JOIN {DB_SCHEMA}.POD_GROUP_MAPPING m\n"
         "    -- IFNULL('?') matches codes NULL-safely (a code is often NULL) and\n"
         "    -- keeps it a plain = so it hash-joins; EQUAL_NULL would be slow here.\n"

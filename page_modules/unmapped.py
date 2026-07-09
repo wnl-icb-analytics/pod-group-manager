@@ -4,7 +4,7 @@
 
 import pandas as pd
 import streamlit as st
-from services.unmapped_service import get_financial_years, get_unmapped
+from services.unmapped_service import get_financial_years, get_unmapped, clear_unmapped_cache
 from services.options_service import get_option_names
 from services.mapping_service import upsert_mapping
 from utils.helpers import num, money
@@ -28,13 +28,23 @@ def render_unmapped():
         "Pick a group (and optional note) per row, then save."
     )
 
+    # Rows this session has just mapped - hidden immediately so the user gets
+    # instant feedback without waiting for the expensive view to recompute.
+    resolved = st.session_state.setdefault("resolved_lookups", set())
+
     years = get_financial_years()
     if not years:
         st.success("✅ Nothing to map — every combination in the latest provider files has a POD group.")
         return
 
-    fy = st.selectbox("Financial year", years, index=0)
+    c_fy, c_refresh = st.columns([4, 1], vertical_alignment="bottom")
+    fy = c_fy.selectbox("Financial year", years, index=0)
+    c_refresh.button("↻ Refresh", use_container_width=True, on_click=_refresh,
+                     help="Reload from Snowflake (data is cached for 5 min).")
+
     df = get_unmapped(fy)
+    if not df.empty and resolved:
+        df = df[~df["POD_LOOKUP"].isin(resolved)]
     if df.empty:
         st.success(f"✅ No unmapped combinations for {fy}.")
         return
@@ -93,33 +103,43 @@ def _bulk_apply(fy, keys, group):
             st.session_state[sk] = group
 
 
+def _refresh():
+    """Force a live reload: drop the cache and forget optimistic hides."""
+    clear_unmapped_cache()
+    st.session_state["resolved_lookups"] = set()
+
+
 def _save(fy, df):
     options = get_option_names(active_only=True)
-    ok, fail = 0, []
-    for _, r in df.iterrows():
-        key = r["POD_LOOKUP"]
-        group = st.session_state.get(f"grp_{fy}_{key}", UNMAPPED)
-        if group not in options:
-            continue
-        note = st.session_state.get(f"note_{fy}_{key}") or None
-        success, msg = upsert_mapping(
-            _val(r["POINT_OF_DELIVERY_CODE"]),
-            _val(r["LOCAL_POINT_OF_DELIVERY_CODE"]),
-            _val(r["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"]),
-            group, note,
-        )
-        if success:
-            ok += 1
-        else:
-            fail.append(f"{key}: {msg}")
+    ok, fail, done = 0, [], []
+    with st.spinner("Saving…"):
+        for _, r in df.iterrows():
+            key = r["POD_LOOKUP"]
+            group = st.session_state.get(f"grp_{fy}_{key}", UNMAPPED)
+            if group not in options:
+                continue
+            note = st.session_state.get(f"note_{fy}_{key}") or None
+            success, msg = upsert_mapping(
+                _val(r["POINT_OF_DELIVERY_CODE"]),
+                _val(r["LOCAL_POINT_OF_DELIVERY_CODE"]),
+                _val(r["LOCAL_POINT_OF_DELIVERY_DESCRIPTION"]),
+                group, note,
+            )
+            if success:
+                ok += 1
+                done.append(key)
+            else:
+                fail.append(f"{key}: {msg}")
 
-    if ok:
-        st.success(f"✅ Assigned {ok} mapping(s).")
     if fail:
         st.error("Some rows failed:\n\n" + "\n\n".join(fail))
     if not ok and not fail:
         st.info("No rows selected — choose a group for at least one row.")
     if ok:
+        # Hide the saved rows now; the cached view stays warm so the rerun is
+        # instant. The 5-min TTL (or ↻ Refresh) reconciles with Snowflake.
+        st.session_state["resolved_lookups"].update(done)
+        st.toast(f"✅ Assigned {ok} mapping(s).")
         st.rerun()
 
 

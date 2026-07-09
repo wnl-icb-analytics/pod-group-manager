@@ -10,8 +10,14 @@ from config import DB_SCHEMA
 conn = get_connection()
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def get_financial_years():
-    """Distinct financial years that currently have unmapped combinations."""
+    """Distinct financial years that currently have unmapped combinations.
+
+    Cached (5 min) - the view scans the 600M-row LSACM staging table, so an
+    uncached call costs ~15s. Call clear_unmapped_cache() after a write to
+    force a fresh read.
+    """
     try:
         df = conn.sql(
             f"SELECT DISTINCT FINANCIAL_YEAR FROM {DB_SCHEMA}.V_UNMAPPED_PODS ORDER BY FINANCIAL_YEAR DESC"
@@ -22,8 +28,13 @@ def get_financial_years():
         return []
 
 
+@st.cache_data(ttl=300, show_spinner="Loading unmapped combinations…")
 def get_unmapped(financial_year=None):
-    """Unmapped combinations, optionally filtered to one financial year."""
+    """Unmapped combinations, optionally filtered to one financial year.
+
+    Cached (5 min) - the view scans the 600M-row LSACM staging table (~23s
+    uncached). Call clear_unmapped_cache() after a write to force a refresh.
+    """
     try:
         where = f"WHERE FINANCIAL_YEAR = {sql_str(financial_year)}" if financial_year else ""
         return conn.sql(
@@ -39,3 +50,9 @@ def get_unmapped(financial_year=None):
     except Exception as e:
         st.error(f"Error loading unmapped combinations: {e}")
         return pd.DataFrame()
+
+
+def clear_unmapped_cache():
+    """Drop the cached unmapped queries so the next read hits Snowflake."""
+    get_financial_years.clear()
+    get_unmapped.clear()

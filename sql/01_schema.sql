@@ -113,7 +113,8 @@ MERGE INTO POD_GROUP_PROVIDER t
 USING (
     SELECT * FROM VALUES
         ('RAP'),('RAL'),('RKE'),('RRV'),('RAN'),('RP4'),
-        ('RP6'),('R1K'),('RYJ'),('RQM'),('RAS')
+        ('RP6'),('R1K'),('RYJ'),('RQM'),('RAS'),('R1H'),
+        ('RJ1'),('RJ7'),('RJZ'),('RQX')
     AS s(provider_code)
 ) s
 ON t.provider_code = s.provider_code

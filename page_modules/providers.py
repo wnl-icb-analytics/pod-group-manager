@@ -13,11 +13,11 @@ PENDING = "provider_pending_delete"
 
 
 def _name(row):
-    """Resolved provider name; overrides are flagged, unknown codes muted."""
-    value, source = row["PROVIDER_NAME"], row["NAME_SOURCE"]
+    """Dictionary-resolved provider name; unknown codes muted."""
+    value = row["PROVIDER_NAME"]
     if value is None or (isinstance(value, float) and pd.isnull(value)):
         return ":grey[— not in dictionary —]"
-    return f"{value} · :grey[manual]" if source == "manual" else str(value)
+    return str(value)
 
 
 def render_providers():
@@ -68,23 +68,21 @@ def render_providers():
                               on_click=_ask_delete, args=(code,))
 
     st.divider()
-    st.markdown("### Add or update a provider")
+    st.markdown("### Add a provider")
     st.caption(
-        "Just the code is needed — the name fills in from the org dictionary. "
-        "Only set a name to override the dictionary (or for a code it lacks). "
+        "Just the ODS code — the name fills in from the org dictionary. "
         "New providers are active straight away."
     )
     with st.form("provider_form"):
-        f = st.columns([1.2, 5])
+        f = st.columns([1.2, 5], vertical_alignment="bottom")
         new_code = f[0].text_input("Code", placeholder="RPY", max_chars=10)
-        new_name = f[1].text_input("Name override (usually blank)", placeholder="Leave blank to use the dictionary name")
-        submitted = st.form_submit_button("💾 Save provider", type="primary")
+        submitted = f[1].form_submit_button("💾 Add provider", type="primary")
         if submitted:
             code = (new_code or "").strip().upper()
             if not code:
                 st.error("Provider code is required.")
             else:
-                ok, msg = upsert_provider(code, (new_name or "").strip() or None, True)
+                ok, msg = upsert_provider(code, True)
                 (st.success if ok else st.error)(msg)
                 if ok:
                     st.rerun()

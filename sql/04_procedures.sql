@@ -153,7 +153,6 @@ $$;
 -- -----------------------------------------------------
 CREATE OR REPLACE PROCEDURE UPSERT_POD_PROVIDER(
     P_CODE   STRING,
-    P_NAME   STRING,
     P_ACTIVE BOOLEAN,
     P_ACTOR  STRING
 )
@@ -165,9 +164,9 @@ BEGIN
     MERGE INTO POD_GROUP_PROVIDER t
     USING (SELECT :P_CODE AS provider_code) s
     ON t.provider_code = s.provider_code
-    WHEN MATCHED THEN UPDATE SET provider_name = :P_NAME, is_active = :P_ACTIVE
-    WHEN NOT MATCHED THEN INSERT (provider_code, provider_name, is_active, created_by)
-        VALUES (:P_CODE, :P_NAME, :P_ACTIVE, :P_ACTOR);
+    WHEN MATCHED THEN UPDATE SET is_active = :P_ACTIVE
+    WHEN NOT MATCHED THEN INSERT (provider_code, is_active, created_by)
+        VALUES (:P_CODE, :P_ACTIVE, :P_ACTOR);
     RETURN 'SUCCESS: provider ' || :P_CODE;
 END;
 $$;

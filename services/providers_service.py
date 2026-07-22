@@ -14,16 +14,12 @@ conn = get_connection()
 
 
 def get_providers(active_only=False):
-    """In-scope providers with names resolved from the org dictionary.
-
-    NAME_SOURCE is 'dictionary', 'manual' (override stored on the row), or
-    None when neither has a name for the code.
-    """
+    """In-scope providers with names resolved from the org dictionary."""
     try:
         where = "WHERE is_active = TRUE" if active_only else ""
         return conn.sql(
             f"""
-            SELECT provider_code, provider_name, name_source, is_active
+            SELECT provider_code, provider_name, is_active
             FROM {DB_SCHEMA}.V_POD_PROVIDER
             {where}
             ORDER BY provider_code
@@ -34,18 +30,14 @@ def get_providers(active_only=False):
         return pd.DataFrame()
 
 
-def upsert_provider(code, name=None, is_active=True):
-    """Add a provider, or update an existing one's override name and active flag.
-
-    Pass name=None to defer to the org dictionary (the usual case); a non-NULL
-    name is stored as a manual override for codes the dictionary lacks.
-    """
+def upsert_provider(code, is_active=True):
+    """Add a provider, or update an existing one's active flag."""
     try:
         actor = current_actor()
         active_sql = "TRUE" if is_active else "FALSE"
         res = conn.sql(
             f"CALL {DB_SCHEMA}.UPSERT_POD_PROVIDER("
-            f"{sql_str(code)}, {sql_str(name)}, {active_sql}, {sql_str(actor)})"
+            f"{sql_str(code)}, {active_sql}, {sql_str(actor)})"
         ).to_pandas()
         msg = str(res.iloc[0, 0]) if not res.empty else ""
         ok = msg.startswith("SUCCESS")

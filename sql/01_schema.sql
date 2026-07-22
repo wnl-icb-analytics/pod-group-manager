@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS POD_GROUP_OPTION (
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS POD_GROUP_PROVIDER (
     provider_code STRING NOT NULL PRIMARY KEY,
-    provider_name STRING,
     is_active     BOOLEAN DEFAULT TRUE,
     created_by    STRING DEFAULT CURRENT_USER(),
     created_at    TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
@@ -109,9 +108,8 @@ WHEN NOT MATCHED THEN INSERT (pod_group_name, sort_order) VALUES (s.pod_group_na
 -- -----------------------------------------------------
 -- Seed: in-scope acute providers (from the source detection query)
 -- -----------------------------------------------------
--- Codes only: names resolve from the org dictionary via V_POD_PROVIDER
--- (provider_name here is a manual override slot for codes the dictionary
--- lacks). Insert-only: existing rows are never overwritten.
+-- Codes only: names resolve from the org dictionary via V_POD_PROVIDER.
+-- Insert-only: existing rows are never overwritten.
 MERGE INTO POD_GROUP_PROVIDER t
 USING (
     SELECT * FROM VALUES

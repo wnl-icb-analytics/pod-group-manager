@@ -47,6 +47,8 @@ generate the key, validate the chosen group and log the change.
   retrospectively, delete, view per-mapping history.
 - **Analytics** — totals, mappings per POD group, recent activity.
 - **Options** — manage the dropdown values.
+- **Providers** — manage the in-scope provider codes that unmapped detection
+  scans: add, rename, activate/deactivate, remove.
 
 ## Deploy
 

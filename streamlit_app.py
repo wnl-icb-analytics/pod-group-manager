@@ -17,19 +17,20 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # Header + nav
-col1, col2 = st.columns([3, 2])
+col1, col2 = st.columns([2, 3])
 with col1:
     st.title("🗂️ POD Group Manager")
     st.caption("Assign and maintain POD group overview mappings")
 with col2:
     st.markdown("<br>", unsafe_allow_html=True)
-    n1, n2, n3, n4, n5 = st.columns(5)
+    n1, n2, n3, n4, n5, n6 = st.columns(6)
     pages = [
         (n1, "Unmapped", "home"),
         (n2, "Mappings", "mappings"),
         (n3, "Analytics", "analytics"),
         (n4, "Options", "options"),
-        (n5, "SQL", "reference"),
+        (n5, "Providers", "providers"),
+        (n6, "SQL", "reference"),
     ]
     for col, label, key in pages:
         with col:
@@ -54,6 +55,9 @@ elif st.session_state.page == "analytics":
 elif st.session_state.page == "options":
     from page_modules.options import render_options
     render_options()
+elif st.session_state.page == "providers":
+    from page_modules.providers import render_providers
+    render_providers()
 elif st.session_state.page == "reference":
     from page_modules.reference import render_reference
     render_reference()

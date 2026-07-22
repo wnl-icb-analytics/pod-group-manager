@@ -148,6 +148,54 @@ END;
 $$;
 
 -- -----------------------------------------------------
+-- Add or update an in-scope provider.
+-- Providers drive V_LATEST_FILES, so activating one widens unmapped detection.
+-- -----------------------------------------------------
+CREATE OR REPLACE PROCEDURE UPSERT_POD_PROVIDER(
+    P_CODE   STRING,
+    P_NAME   STRING,
+    P_ACTIVE BOOLEAN,
+    P_ACTOR  STRING
+)
+RETURNS STRING
+LANGUAGE SQL
+AS
+$$
+BEGIN
+    MERGE INTO POD_GROUP_PROVIDER t
+    USING (SELECT :P_CODE AS provider_code) s
+    ON t.provider_code = s.provider_code
+    WHEN MATCHED THEN UPDATE SET provider_name = :P_NAME, is_active = :P_ACTIVE
+    WHEN NOT MATCHED THEN INSERT (provider_code, provider_name, is_active, created_by)
+        VALUES (:P_CODE, :P_NAME, :P_ACTIVE, :P_ACTOR);
+    RETURN 'SUCCESS: provider ' || :P_CODE;
+END;
+$$;
+
+-- -----------------------------------------------------
+-- Remove a provider outright (for codes added by mistake).
+-- Prefer deactivating - that keeps the code on record.
+-- -----------------------------------------------------
+CREATE OR REPLACE PROCEDURE DELETE_POD_PROVIDER(P_CODE STRING)
+RETURNS STRING
+LANGUAGE SQL
+AS
+$$
+DECLARE
+    v_exists INT;
+BEGIN
+    SELECT COUNT(*) INTO :v_exists
+    FROM POD_GROUP_PROVIDER WHERE provider_code = :P_CODE;
+    IF (v_exists = 0) THEN
+        RETURN 'ERROR: no provider ''' || :P_CODE || '''';
+    END IF;
+
+    DELETE FROM POD_GROUP_PROVIDER WHERE provider_code = :P_CODE;
+    RETURN 'SUCCESS: deleted ' || :P_CODE;
+END;
+$$;
+
+-- -----------------------------------------------------
 -- Add or update a dropdown option.
 -- -----------------------------------------------------
 CREATE OR REPLACE PROCEDURE UPSERT_POD_OPTION(

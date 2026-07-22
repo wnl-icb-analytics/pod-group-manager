@@ -109,13 +109,34 @@ WHEN NOT MATCHED THEN INSERT (pod_group_name, sort_order) VALUES (s.pod_group_na
 -- -----------------------------------------------------
 -- Seed: in-scope acute providers (from the source detection query)
 -- -----------------------------------------------------
+-- Names are optional (NULL where not recorded) and editable on the Providers
+-- page. Insert-only: an existing row's name/active flag is never overwritten.
 MERGE INTO POD_GROUP_PROVIDER t
 USING (
-    SELECT * FROM VALUES
-        ('RAP'),('RAL'),('RKE'),('RRV'),('RAN'),('RP4'),
-        ('RP6'),('R1K'),('RYJ'),('RQM'),('RAS'),('R1H'),
-        ('RJ1'),('RJ7'),('RJZ'),('RQX')
-    AS s(provider_code)
+    SELECT column1::STRING AS provider_code, column2::STRING AS provider_name
+    FROM VALUES
+        ('RAP', NULL),
+        ('RAL', NULL),
+        ('RKE', NULL),
+        ('RRV', NULL),
+        ('RAN', NULL),
+        ('RP4', NULL),
+        ('RP6', NULL),
+        ('R1K', NULL),
+        ('RYJ', NULL),
+        ('RQM', NULL),
+        ('RAS', NULL),
+        ('R1H', NULL),
+        ('RJ1', NULL),
+        ('RJ7', NULL),
+        ('RJZ', NULL),
+        ('RQX', NULL),
+        ('RPY', 'The Royal Marsden NHS Foundation Trust'),
+        ('RTK', 'Ashford and St Peter''s Hospitals NHS Foundation Trust'),
+        ('RWG', 'West Hertfordshire Teaching Hospitals NHS Trust'),
+        ('RWH', 'East and North Hertfordshire Teaching NHS Trust'),
+        ('RDU', 'Frimley Health NHS Foundation Trust')
 ) s
 ON t.provider_code = s.provider_code
-WHEN NOT MATCHED THEN INSERT (provider_code) VALUES (s.provider_code);
+WHEN NOT MATCHED THEN INSERT (provider_code, provider_name)
+    VALUES (s.provider_code, s.provider_name);

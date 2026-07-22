@@ -13,6 +13,7 @@ from utils.helpers import num, money
 UNMAPPED = "— unmapped —"      # per-row default: leave the row unmapped
 CHOOSE = "— select group —"    # bulk control default: nothing chosen
 ALL_PROVIDERS = "All providers"
+MAX_ROWS = 200                 # default render cap; each row costs 6 widgets
 COLS = [1.0, 1.0, 1.9, 1.9, 2.1, 1.8]
 
 
@@ -71,9 +72,18 @@ def render_unmapped():
         st.error("No active POD group options. Add some on the Options page first.")
         return
 
+    # Rendering every row is the page's real cost (6 widgets per row), so cap
+    # the default view at the top rows by volume; the provider filter or the
+    # toggle below gets to the rest.
+    total = len(df)
+    if total > MAX_ROWS:
+        if not st.toggle(f"Show all {total} rows (slower)", key=f"all_{fy}"):
+            df = df.head(MAX_ROWS)
+
     keys = df["POD_LOOKUP"].tolist()
     scope = f"**{fy}**" + (f" · **{provider}**" if provider != ALL_PROVIDERS else "")
-    st.markdown(f"**{len(df)}** unmapped combination(s) for {scope} — choose a group, then Save.")
+    shown = f"top **{len(df)}** of **{total}**" if len(df) < total else f"**{total}**"
+    st.markdown(f"{shown} unmapped combination(s) for {scope}, largest first — choose a group, then Save.")
 
     # Bulk helper: many combinations share a group, so pre-fill all unset rows.
     b1, b2 = st.columns([3, 1], vertical_alignment="bottom")
@@ -121,8 +131,13 @@ def _bulk_apply(fy, keys, group):
             st.session_state[sk] = group
 
 
+@st.cache_data(ttl=300, show_spinner=False)
 def _provider_names():
-    """Code → dictionary name for provider selectbox labels."""
+    """Code → dictionary name for provider selectbox labels.
+
+    Cached: this runs on every rerun (each widget interaction), so an uncached
+    read would add a Snowflake round-trip per click.
+    """
     df = get_providers(active_only=False)
     if df.empty:
         return {}
@@ -134,8 +149,9 @@ def _provider_names():
 
 
 def _refresh():
-    """Force a live reload: drop the cache and forget optimistic hides."""
+    """Force a live reload: drop the caches and forget optimistic hides."""
     clear_unmapped_cache()
+    _provider_names.clear()
     st.session_state["resolved_lookups"] = set()
 
 

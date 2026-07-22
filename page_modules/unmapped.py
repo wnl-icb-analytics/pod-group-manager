@@ -6,11 +6,13 @@ import pandas as pd
 import streamlit as st
 from services.unmapped_service import get_financial_years, get_unmapped, clear_unmapped_cache
 from services.options_service import get_option_names
+from services.providers_service import get_providers
 from services.mapping_service import upsert_mapping
 from utils.helpers import num, money
 
 UNMAPPED = "— unmapped —"      # per-row default: leave the row unmapped
 CHOOSE = "— select group —"    # bulk control default: nothing chosen
+ALL_PROVIDERS = "All providers"
 COLS = [1.0, 1.0, 1.9, 1.9, 2.1, 1.8]
 
 
@@ -37,7 +39,7 @@ def render_unmapped():
         st.success("✅ Nothing to map — every combination in the latest provider files has a POD group.")
         return
 
-    c_fy, c_refresh = st.columns([4, 1], vertical_alignment="bottom")
+    c_fy, c_prov, c_refresh = st.columns([2, 2.6, 1], vertical_alignment="bottom")
     fy = c_fy.selectbox("Financial year", years, index=0)
     c_refresh.button("↻ Refresh", use_container_width=True, on_click=_refresh,
                      help="Reload from Snowflake (data is cached for 5 min).")
@@ -45,8 +47,23 @@ def render_unmapped():
     df = get_unmapped(fy)
     if not df.empty and resolved:
         df = df[~df["POD_LOOKUP"].isin(resolved)]
+
+    # Provider drilldown: codes present in this year's unmapped rows, labelled
+    # with dictionary names. A combination is kept if any of its providers match.
+    provider = ALL_PROVIDERS
+    if not df.empty:
+        codes = sorted({c for cell in df["PROVIDERS"] for c in str(cell).split(", ")})
+        names = _provider_names()
+        provider = c_prov.selectbox(
+            "Provider", [ALL_PROVIDERS] + codes, key=f"prov_{fy}",
+            format_func=lambda c: c if c == ALL_PROVIDERS else f"{c} — {names.get(c, '')}".rstrip(" —"),
+        )
+        if provider != ALL_PROVIDERS:
+            df = df[df["PROVIDERS"].map(lambda cell: provider in str(cell).split(", "))]
+
     if df.empty:
-        st.success(f"✅ No unmapped combinations for {fy}.")
+        scope = f"{provider} in {fy}" if provider != ALL_PROVIDERS else fy
+        st.success(f"✅ No unmapped combinations for {scope}.")
         return
 
     options = get_option_names(active_only=True)
@@ -55,7 +72,8 @@ def render_unmapped():
         return
 
     keys = df["POD_LOOKUP"].tolist()
-    st.markdown(f"**{len(df)}** unmapped combination(s) for **{fy}** — choose a group, then Save.")
+    scope = f"**{fy}**" + (f" · **{provider}**" if provider != ALL_PROVIDERS else "")
+    st.markdown(f"**{len(df)}** unmapped combination(s) for {scope} — choose a group, then Save.")
 
     # Bulk helper: many combinations share a group, so pre-fill all unset rows.
     b1, b2 = st.columns([3, 1], vertical_alignment="bottom")
@@ -101,6 +119,18 @@ def _bulk_apply(fy, keys, group):
         sk = f"grp_{fy}_{key}"
         if st.session_state.get(sk, UNMAPPED) == UNMAPPED:
             st.session_state[sk] = group
+
+
+def _provider_names():
+    """Code → dictionary name for provider selectbox labels."""
+    df = get_providers(active_only=False)
+    if df.empty:
+        return {}
+    return {
+        r["PROVIDER_CODE"]: r["PROVIDER_NAME"]
+        for _, r in df.iterrows()
+        if isinstance(r["PROVIDER_NAME"], str)
+    }
 
 
 def _refresh():

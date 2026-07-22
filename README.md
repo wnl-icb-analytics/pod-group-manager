@@ -48,7 +48,9 @@ generate the key, validate the chosen group and log the change.
 - **Analytics** — totals, mappings per POD group, recent activity.
 - **Options** — manage the dropdown values.
 - **Providers** — manage the in-scope provider codes that unmapped detection
-  scans: add, rename, activate/deactivate, remove.
+  scans: add, activate/deactivate, remove. Names resolve from the org
+  dictionary (`MODELLING.COMMISSIONING_MODELLING.DICT_ORGANISATION_NHS_PROVIDER`)
+  via `V_POD_PROVIDER`; a stored name acts as a manual override.
 
 ## Deploy
 

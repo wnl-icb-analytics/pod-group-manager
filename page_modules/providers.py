@@ -12,19 +12,21 @@ COLS = [1.2, 5, 1.7, 1.5]
 PENDING = "provider_pending_delete"
 
 
-def _name(value):
-    """Render a provider name, or a muted placeholder when unset."""
+def _name(row):
+    """Resolved provider name; overrides are flagged, unknown codes muted."""
+    value, source = row["PROVIDER_NAME"], row["NAME_SOURCE"]
     if value is None or (isinstance(value, float) and pd.isnull(value)):
-        return ":grey[— no name —]"
-    return str(value)
+        return ":grey[— not in dictionary —]"
+    return f"{value} · :grey[manual]" if source == "manual" else str(value)
 
 
 def render_providers():
     st.subheader("In-scope providers")
     st.caption(
-        "Provider codes scanned for unmapped POD combinations. Deactivate to drop a "
-        "provider from detection while keeping the code on record. Changes take effect "
-        "immediately — the unmapped list is reloaded on the next visit."
+        "Provider codes scanned for unmapped POD combinations. Names come from the "
+        "org dictionary automatically. Deactivate to drop a provider from detection "
+        "while keeping the code on record. Changes take effect immediately — the "
+        "unmapped list is reloaded on the next visit."
     )
 
     df = get_providers(active_only=False).reset_index(drop=True)
@@ -43,7 +45,7 @@ def render_providers():
             active = bool(row["IS_ACTIVE"])
             c = st.columns(COLS, vertical_alignment="center")
             c[0].markdown(f"**{code}**" if active else f":grey[{code}]")
-            c[1].markdown(_name(row["PROVIDER_NAME"]) + ("" if active else " · :grey[inactive]"))
+            c[1].markdown(_name(row) + ("" if active else " · :grey[inactive]"))
 
             with c[2]:
                 if active:
@@ -68,13 +70,14 @@ def render_providers():
     st.divider()
     st.markdown("### Add or update a provider")
     st.caption(
-        "Entering an existing code updates its name — use this to fill in or correct names. "
+        "Just the code is needed — the name fills in from the org dictionary. "
+        "Only set a name to override the dictionary (or for a code it lacks). "
         "New providers are active straight away."
     )
     with st.form("provider_form"):
         f = st.columns([1.2, 5])
         new_code = f[0].text_input("Code", placeholder="RPY", max_chars=10)
-        new_name = f[1].text_input("Provider name", placeholder="The Royal Marsden NHS Foundation Trust")
+        new_name = f[1].text_input("Name override (usually blank)", placeholder="Leave blank to use the dictionary name")
         submitted = st.form_submit_button("💾 Save provider", type="primary")
         if submitted:
             code = (new_code or "").strip().upper()

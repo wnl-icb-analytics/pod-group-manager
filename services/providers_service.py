@@ -14,13 +14,17 @@ conn = get_connection()
 
 
 def get_providers(active_only=False):
-    """In-scope provider codes, ordered by code."""
+    """In-scope providers with names resolved from the org dictionary.
+
+    NAME_SOURCE is 'dictionary', 'manual' (override stored on the row), or
+    None when neither has a name for the code.
+    """
     try:
         where = "WHERE is_active = TRUE" if active_only else ""
         return conn.sql(
             f"""
-            SELECT provider_code, provider_name, is_active
-            FROM {DB_SCHEMA}.POD_GROUP_PROVIDER
+            SELECT provider_code, provider_name, name_source, is_active
+            FROM {DB_SCHEMA}.V_POD_PROVIDER
             {where}
             ORDER BY provider_code
             """
@@ -31,7 +35,11 @@ def get_providers(active_only=False):
 
 
 def upsert_provider(code, name=None, is_active=True):
-    """Add a provider, or update an existing one's name and active flag."""
+    """Add a provider, or update an existing one's override name and active flag.
+
+    Pass name=None to defer to the org dictionary (the usual case); a non-NULL
+    name is stored as a manual override for codes the dictionary lacks.
+    """
     try:
         actor = current_actor()
         active_sql = "TRUE" if is_active else "FALSE"

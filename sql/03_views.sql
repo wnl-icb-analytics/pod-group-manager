@@ -21,6 +21,25 @@ SELECT
 FROM POD_GROUP_MAPPING;
 
 -- -----------------------------------------------------
+-- In-scope providers with names resolved from the org dictionary
+-- (the same dictionary STG_LSACM uses for provider-code cleaning).
+-- A manually entered provider_name overrides the dictionary; NAME_SOURCE
+-- says which one won so the app can flag overrides.
+-- -----------------------------------------------------
+CREATE OR REPLACE VIEW V_POD_PROVIDER AS
+SELECT
+    p.provider_code                                  AS PROVIDER_CODE,
+    COALESCE(p.provider_name, d.organisation_name)   AS PROVIDER_NAME,
+    CASE
+        WHEN p.provider_name IS NOT NULL THEN 'manual'
+        WHEN d.organisation_name IS NOT NULL THEN 'dictionary'
+    END                                              AS NAME_SOURCE,
+    p.is_active                                      AS IS_ACTIVE
+FROM POD_GROUP_PROVIDER p
+LEFT JOIN MODELLING.COMMISSIONING_MODELLING.DICT_ORGANISATION_NHS_PROVIDER d
+    ON d.organisation_code = p.provider_code;
+
+-- -----------------------------------------------------
 -- Latest submitted file per in-scope provider (shared by the views below).
 -- -----------------------------------------------------
 CREATE OR REPLACE VIEW V_LATEST_FILES AS

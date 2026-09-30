@@ -30,7 +30,7 @@ SELECT
     d.organisation_name   AS PROVIDER_NAME,
     p.is_active           AS IS_ACTIVE
 FROM POD_GROUP_PROVIDER p
-LEFT JOIN MODELLING.COMMISSIONING_MODELLING.DICT_ORGANISATION_NHS_PROVIDER d
+LEFT JOIN REFERENCE.ORGANISATION.ORGANISATION_NHS_PROVIDER d
     ON d.organisation_code = p.provider_code;
 
 -- -----------------------------------------------------

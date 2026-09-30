@@ -49,7 +49,7 @@ generate the key, validate the chosen group and log the change.
 - **Options** — manage the dropdown values.
 - **Providers** — manage the in-scope provider codes that unmapped detection
   scans: add, activate/deactivate, remove. Names resolve from the org
-  dictionary (`MODELLING.COMMISSIONING_MODELLING.DICT_ORGANISATION_NHS_PROVIDER`)
+  dictionary (`REFERENCE.ORGANISATION.ORGANISATION_NHS_PROVIDER`)
   via `V_POD_PROVIDER`.
 
 ## Deploy
